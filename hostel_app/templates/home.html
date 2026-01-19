@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hostel Allocation</title>
+</head>
+<body>
+    <h1>Welcome to Hostel Allocation</h1>
+
+    <h2>Hostels</h2>
+    <ul>
+        {% for hostel in hostels %}
+            <li>{{ hostel.name }} - Capacity: {{ hostel.capacity }} - Occupied: {{ hostel.occupied_rooms }}</li>
+        {% endfor %}
+    </ul>
+
+    <h2>Students</h2>
+    <ul>
+        {% for student in students %}
+            <li>{{ student.first_name }} {{ student.last_name }} - Room: {{ student.room_number }} - Hostel: {{ student.hostel.name }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
