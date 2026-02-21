@@ -1,0 +1,44 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Dashboard</title>
+		<link rel="stylesheet" href="{% static 'hostel_app/css/dashboard.css' %}">
+		</head>
+<body>
+{% include "hostel_app/navbar.html" %}
+<main id="home" class="section">
+	<h1 id="welcomeText" class="main-title">
+		WELCOME WEB BASED HOSTEL ALLOCATION MANAGEMENT SYSTEM
+	</h1>
+
+	<p class="subtitle" id="subtitleText">
+		A Smart, Secure and Reliable Platform for Student Hostel Allocation
+	</p>
+
+	<div class="cards">
+<div class="card">
+<h3>🏢 View Hostels</h3>
+<p>Browse all available hostels with transparency and ease.</p>
+</div>
+
+<div class="card">
+<h3>📝 Apply Online</h3>
+<p>Submit hostel applications online without paperwork.</p>
+</div>
+
+<div class="card">
+<h3>📊 Allocation Status</h3>
+<p>Track your hostel allocation status in real time.</p>
+</div>
+
+<div class="card">
+<h3>⚙️ System Settings</h3>
+<p>Change language and manage your account securely.</p>
+	</div>
+</main>
+</body>
+</html>
+</div>

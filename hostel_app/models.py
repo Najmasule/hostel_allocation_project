@@ -1,19 +1,29 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser
 
 class Hostel(models.Model):
     name = models.CharField(max_length=100)
-    capacity = models.IntegerField()
-    occupied_rooms = models.IntegerField(default=0)
+    location = models.CharField(max_length=100)
+    total_rooms = models.IntegerField()
 
-    def __str__(self):
-        return self.name
+# class Student(models.Model):
+#     user = models.OneToOneField(User, on_delete=models.CASCADE)
+#     hostel = models.ForeignKey(Hostel, on_delete=models.SET_NULL, null=True)
+#     room_number = models.CharField(max_length=10)
 
-class Student(models.Model):
-    first_name = models.CharField(max_length=50)
-    last_name = models.CharField(max_length=50)
-    email = models.EmailField(unique=True)
+class CustomUser(AbstractUser):
+    role_choices = [
+        ('student', 'Student'),
+        ('admin', 'Admin'),
+    ]
+    role = models.CharField(max_length=20, choices=role_choices, default='student')
+    adress = models.CharField(max_length=255, blank=True, null=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
+
+    
+
+class Allocation(models.Model):
+    student = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    hostel = models.ForeignKey('Hostel', on_delete=models.CASCADE)
     room_number = models.CharField(max_length=10)
-    hostel = models.ForeignKey(Hostel, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+    allocated_on = models.DateTimeField(auto_now_add=True)

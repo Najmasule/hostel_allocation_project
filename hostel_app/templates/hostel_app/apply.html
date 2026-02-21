@@ -1,0 +1,45 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Apply for Hostel</title>
+  <link rel="stylesheet" href="{% static 'hostel_app/css/register.css' %}">
+</head>
+<body>
+{% include "hostel_app/navbar.html" %}
+<main class="content">
+  <div class="section">
+    <h2>Apply for Hostel</h2>
+    <p class="subtitle">Select a hostel below and submit your application.</p>
+
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <form method="post" action="{% url 'apply_hostel' %}">
+      {% csrf_token %}
+      <label for="hostel_id">Preferred Hostel</label>
+      <select id="hostel_id" name="hostel_id" required>
+        <option value="">-- Select hostel --</option>
+        {% for hostel in hostels %}
+          <option value="{{ hostel.id }}">{{ hostel.name }} — {{ hostel.location }}</option>
+        {% empty %}
+          <option value="">No hostels available</option>
+        {% endfor %}
+      </select>
+
+      <label for="room_pref">Preferred Room Type (optional)</label>
+      <input id="room_pref" name="room_pref" type="text" placeholder="Single / Shared">
+
+      <button type="submit">Submit Application</button>
+    </form>
+  </div>
+</main>
+</body>
+</html>

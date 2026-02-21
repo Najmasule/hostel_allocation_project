@@ -1,0 +1,28 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>View Hostels</title>
+  <link rel="stylesheet" href="{% static 'hostel_app/css/dashboard.css' %}">
+</head>
+<body>
+{% include "hostel_app/navbar.html" %}
+<main class="content">
+  <div class="section">
+    <h2>Available Hostels</h2>
+    <div class="cards">
+      {% for hostel in hostels %}
+      <div class="card">
+        <h3>{{ hostel.name }}</h3>
+        <p>Available Rooms: {{ hostel.total_rooms }}</p>
+      </div>
+      {% empty %}
+      <p>No hostels found.</p>
+      {% endfor %}
+    </div>
+  </div>
+</main>
+</body>
+</html>

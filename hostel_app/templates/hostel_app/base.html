@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Web Based Hostel Allocation Management System</title>
+
+<style>
+/* ===== GENERAL ===== */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0B3D91;
+}
+
+/* ===== AUTH (LOGIN & REGISTER) ===== */
+.auth-box {
+    width: 360px;
+    margin: 100px auto;
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+}
+
+.auth-box h2 {
+    color: #0B3D91;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background: #0B3D91;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1E3A8A;
+}
+
+a {
+    color: #0B3D91;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+/* ===== DASHBOARD ===== */
+.dashboard {
+    display: none;
+    height: 100vh;
+    background: white;
+}
+
+.sidebar {
+    width: 240px;
+    background: #0B3D91;
+    color: white;
+    padding: 20px;
+}
+
+.sidebar h2 {
+    text-align: center;
+}
+
+.sidebar button {
+    width: 100%;
+    margin: 6px 0;
+    background: #1E3A8A;
+}
+
+.sidebar button:hover {
+    background: #2563EB;
+}
+
+.content {
+    flex: 1;
+    padding: 25px;
+    background: #f5f7fb;
+}
+
+.section {
+    display: none;
+}
+
+.section h1, .section h2 {
+    color: #0B3D91;
+}
+
+/* ===== HOME DESIGN ===== */
+.main-title {
+    font-size: 32px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.subtitle {
+    text-align: center;
+    color: #444;
+    margin-bottom: 35px;
+    font-size: 16px;
+}
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+.card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+    transition: 0.3s;
+}
+
+.card h3 {
+    color: #0B3D91;
+    margin-bottom: 10px;
+}
+
+.card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 10px 18px rgba(0,0,0,0.18);
+}
+</style>
+</head>
+
+<body>
+
+
+
+
+
+<!-- ===== DASHBOARD ===== -->
+
+<!-- HOME -->
+<div id="home" class="section">
+<h1 id="welcomeText" class="main-title">
+WELCOME WEB BASED HOSTEL ALLOCATION MANAGEMENT SYSTEM
+</h1>
+
+<p class="subtitle" id="subtitleText">
+A Smart, Secure and Reliable Platform for Student Hostel Allocation
+</p>
+
+<div class="cards">
+<div class="card">
+<h3>🏢 View Hostels</h3>
+<p>Browse all available hostels with transparency and ease.</p>
+</div>
+
+<div class="card">
+<h3>📝 Apply Online</h3>
+<p>Submit hostel applications online without paperwork.</p>
+</div>
+
+<div class="card">
+<h3>📊 Allocation Status</h3>
+<p>Track your hostel allocation status in real time.</p>
+</div>
+
+<div class="card">
+<h3>⚙️ System Settings</h3>
+<p>Change language and manage your account securely.</p>
+</div>
+</div>
+</div>
+
+<!-- VIEW HOSTEL -->
+<div id="hostel" class="section">
+<h2>Available Hostels</h2>
+<ul>
+<li>Hostel A</li>
+<li>Hostel B</li>
+<li>Hostel C</li>
+</ul>
+</div>
+
+<!-- APPLY -->
+<div id="apply" class="section">
+<h2>Apply for Hostel</h2>
+<select>
+<option>Select Hostel</option>
+<option>Hostel A</option>
+<option>Hostel B</option>
+</select>
+<button>Apply</button>
+</div>
+
+<!-- STATUS -->
+<div id="status" class="section">
+<h2>Allocation Status</h2>
+<p>No hostel allocated yet.</p>
+</div>
+
+<!-- SETTINGS -->
+<div id="settings" class="section">
+<h2>Settings</h2>
+<label>Change Language</label>
+<select onchange="changeLanguage(this.value)">
+<option value="en">English</option>
+<option value="sw">Swahili</option>
+</select>
+</div>
+
+</div>
+</div>
+
+<script>
+/* SHOW LOGIN / REGISTER */
+function showRegister(){
+loginBox.style.display="none";
+registerBox.style.display="block";
+}
+function showLogin(){
+registerBox.style.display="none";
+loginBox.style.display="block";
+}
+
+/* REGISTER */
+function register(){
+let user={
+name:regName.value,
+email:regEmail.value,
+password:regPassword.value
+};
+localStorage.setItem("user",JSON.stringify(user));
+alert("Registration successful!");
+showLogin();
+}
+
+/* LOGIN */
+function login(){
+let user=JSON.parse(localStorage.getItem("user"));
+if(!user){ alert("Please register first"); return; }
+if(loginEmail.value===user.email && loginPassword.value===user.password){
+loginBox.style.display="none";
+dashboard.style.display="flex";
+showSection("home");
+}else{
+alert("Wrong email or password");
+}
+}
+
+/* DASHBOARD NAVIGATION */
+function showSection(id){
+document.querySelectorAll(".section").forEach(s=>s.style.display="none");
+document.getElementById(id).style.display="block";
+}
+
+/* CHANGE LANGUAGE */
+function changeLanguage(lang){
+if(lang==="sw"){
+welcomeText.innerText="KARIBU KWENYE MFUMO WA MGAWO WA HOSTEL MTANDAONI";
+subtitleText.innerText="Jukwaa salama na la kisasa kwa usimamizi wa mgao wa hosteli kwa wanafunzi";
+}else{
+welcomeText.innerText="WELCOME WEB BASED HOSTEL ALLOCATION MANAGEMENT SYSTEM";
+subtitleText.innerText="A Smart, Secure and Reliable Platform for Student Hostel Allocation";
+}
+}
+
+/* LOGOUT */
+function logout(){
+location.reload();
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,4 @@
+Bad Request: /api/register/
+[21/Feb/2026 12:02:05] "POST /api/register/ HTTP/1.1" 400 46
+Bad Request: /api/login/
+[21/Feb/2026 12:02:05] "POST /api/login/ HTTP/1.1" 400 46

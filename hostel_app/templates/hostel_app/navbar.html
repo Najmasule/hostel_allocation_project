@@ -1,0 +1,37 @@
+{% load static %}
+
+<style>
+	/* Navbar / sidebar styles (keeps styles local to included template) */
+	.dashboard{display:flex;gap:22px;align-items:flex-start}
+	.sidebar{width:220px;background:#ffffff;border-radius:12px;padding:16px;box-shadow:0 10px 30px rgba(20,30,80,0.06);border:1px solid rgba(20,30,80,0.04);position: fixed; bottom: 0; left: 0;top: 0%;}
+	.sidebar-header h2{margin:0;font-size:16px;color:#0f1724}
+	.nav{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+	.nav-link{display:block;padding:10px 12px;border-radius:8px;color:#21304a;text-decoration:none;font-weight:600;background:transparent;transition:background .12s,transform .08s}
+	.nav-link:hover{background:linear-gradient(90deg,#f2f5ff,#eef3ff);transform:translateY(-1px)}
+	.nav-link.logout{color:#b91c1c;font-weight:700}
+	.content{flex:1;background:transparent}
+	@media (max-width:760px){
+		.dashboard{flex-direction:column}
+		.sidebar{width:100%;display:flex;align-items:center;justify-content:space-between}
+		.nav{flex-direction:row;gap:6px;overflow:auto}
+		.nav-link{padding:8px 10px;font-size:14px}
+	}
+</style>
+
+<div id="dashboard" class="dashboard">
+
+	<aside class="sidebar">
+		<div class="sidebar-header">
+			<h2>Dashboard</h2>
+		</div>
+		<nav class="nav">
+			<a href="{% url 'home' %}" class="nav-link">Home</a>
+			<a href="{% url 'view_hostel' %}" class="nav-link">View Hostel</a>
+			<a href="{% url 'apply_hostel' %}" class="nav-link">Apply for Hostel</a>
+			<a href="{% url 'allocation_status' %}" class="nav-link">View Allocation Status</a>
+			<a href="{% url 'settings_page' %}" class="nav-link">Settings</a>
+			<a href="{% url 'logout' %}" class="nav-link logout">Logout</a>
+		</nav>
+	</aside>
+
+	<main class="content">

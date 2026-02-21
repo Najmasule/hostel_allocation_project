@@ -1,0 +1,36 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Login</title>
+    <link rel="stylesheet" href="{% static 'hostel_app/css/register.css' %}">
+</head>
+<body>
+<div class="auth-box">
+    <h2>LOGIN</h2>
+
+    {% if messages %}
+        <ul class="messages">
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="post" action="{% url 'login_page' %}">
+        {% csrf_token %}
+        <label for="username">Username</label>
+        <input type="text" name="username" id="username" autocomplete="username" required>
+
+        <label for="password">Password</label>
+        <input type="password" name="password" id="password" required>
+
+        <button type="submit">Login</button>
+    </form>
+
+    <p>Don't have an account? <a href="{% url 'register_page' %}">Register</a></p>
+</div>
+</body>
+</html>

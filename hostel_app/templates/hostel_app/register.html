@@ -1,0 +1,54 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Register</title>
+<link rel="stylesheet" href="{% static 'hostel_app/css/register.css' %}">
+</head>
+<body>
+<div class="auth-box">
+    <h2>REGISTER</h2>
+        {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+
+        <form method="post" action="{% url 'register_page' %}">
+            {% csrf_token %}
+
+            <label for="name">Full Name</label>
+            <input type="text" id="name" name="name" placeholder="Full Name" required>
+
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" placeholder="Username" required>
+
+            <label for="email">Email (optional)</label>
+            <input type="email" id="email" name="email" placeholder="Email address">
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" placeholder="Password" required>
+
+            <label for="password2">Confirm Password</label>
+            <input type="password" id="password2" name="password2" placeholder="Confirm Password" required>
+
+            <label for="adress">Address (optional)</label>
+            <input type="text" id="adress" name="adress" placeholder="Address">
+
+            <label for="phone_number">Phone number (optional)</label>
+            <input type="text" id="phone_number" name="phone_number" placeholder="+255700000000">
+
+            <input type="hidden" name="role" value="student">
+
+            <button type="submit">Register</button>
+        </form>
+
+    <p>Already registered? <a href="{% url 'login_page' %}">Login</a></p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,20 @@
+function login(){
+  fetch("http://127.0.0.1:8000/api/login/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      email: document.getElementById("loginEmail").value,
+      password: document.getElementById("loginPassword").value
+    })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if(data.status === "success"){
+      window.location = "dashboard.html";
+    } else {
+      alert("Wrong email or password");
+    }
+  });
+}

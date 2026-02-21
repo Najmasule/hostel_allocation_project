@@ -1,0 +1,76 @@
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(";").shift();
+  return "";
+}
+
+async function ensureCsrfToken() {
+  let token = getCookie("csrftoken");
+  if (token) {
+    return token;
+  }
+
+  await fetch("/api/session/", { credentials: "include" });
+  token = getCookie("csrftoken");
+  return token;
+}
+
+async function request(path, options = {}) {
+  const method = options.method || "GET";
+  const config = {
+    method,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  };
+
+  if (method !== "GET") {
+    const csrfToken = await ensureCsrfToken();
+    if (csrfToken) {
+      config.headers["X-CSRFToken"] = csrfToken;
+    }
+  }
+
+  if (options.body !== undefined) {
+    config.body = JSON.stringify(options.body);
+  }
+
+  let response;
+  try {
+    response = await fetch(path, config);
+  } catch {
+    throw new Error("Backend haipatikani. Hakikisha python manage.py runserver inaendelea.");
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  let data = {};
+
+  if (contentType.includes("application/json")) {
+    data = await response.json().catch(() => ({}));
+  } else {
+    const text = await response.text().catch(() => "");
+    if (text) {
+      data.message = text.slice(0, 200);
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(data.message || `Request failed (${response.status})`);
+  }
+
+  return data;
+}
+
+export const api = {
+  session: () => request("/api/session/"),
+  login: (payload) => request("/api/login/", { method: "POST", body: payload }),
+  register: (payload) => request("/api/register/", { method: "POST", body: payload }),
+  logout: () => request("/api/logout/", { method: "POST", body: {} }),
+  hostels: () => request("/api/hostels/"),
+  status: () => request("/api/status/"),
+  apply: (payload) => request("/api/allocate/", { method: "POST", body: payload }),
+  dashboard: () => request("/api/dashboard/")
+};

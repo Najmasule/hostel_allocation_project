@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Web Based Hostel Allocation System</title>
+
+<style>
+/* ===== GENERAL ===== */
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #0B3D91;
+}
+
+/* ===== AUTH (LOGIN & REGISTER) ===== */
+.auth-box {
+    width: 350px;
+    margin: 100px auto;
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.auth-box h2 {
+    color: #0B3D91;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    background: #0B3D91;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1E3A8A;
+}
+
+a {
+    color: #0B3D91;
+    text-decoration: none;
+}
+
+/* ===== DASHBOARD ===== */
+.dashboard {
+    display: none;
+    height: 100vh;
+    background: white;
+}
+
+.sidebar {
+    width: 230px;
+    background: #0B3D91;
+    color: white;
+    padding: 20px;
+}
+
+.sidebar h2 {
+    text-align: center;
+}
+
+.sidebar button {
+    width: 100%;
+    margin: 6px 0;
+    background: #1E3A8A;
+}
+
+.sidebar button:hover {
+    background: #2563EB;
+}
+
+.content {
+    flex: 1;
+    padding: 20px;
+}
+
+.section {
+    display: none;
+}
+
+.section h1, .section h2 {
+    color: #0B3D91;
+}
+</style>
+</head>
+
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="loginBox" class="auth-box">
+<h2>LOGIN</h2>
+<input type="email" id="loginEmail" placeholder="Email">
+<input type="password" id="loginPassword" placeholder="Password">
+<button onclick="login()">Login</button>
+<p>Don't have an account? <a href="#" onclick="showRegister()">Register</a></p>
+</div>
+
+<!-- ===== REGISTER ===== -->
+<div id="registerBox" class="auth-box" style="display:none;">
+<h2>REGISTER</h2>
+<input type="text" id="regName" placeholder="Full Name">
+<input type="email" id="regEmail" placeholder="Email">
+<input type="password" id="regPassword" placeholder="Password">
+<button onclick="register()">Register</button>
+<p>Already registered? <a href="#" onclick="showLogin()">Login</a></p>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div id="dashboard" class="dashboard">
+
+<div class="sidebar">
+<h2>DASHBOARD</h2>
+<button onclick="showSection('home')">Home</button>
+<button onclick="showSection('hostel')">View Hostel</button>
+<button onclick="showSection('apply')">Apply for Hostel</button>
+<button onclick="showSection('status')">View Allocation Status</button>
+<button onclick="showSection('settings')">Settings</button>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div class="content">
+
+<div id="home" class="section">
+<h1 id="welcomeText">
+WELCOME WEB BASED HOSTEL ALLOCATION MANAGEMENT SYSTEM
+</h1>
+</div>
+
+<div id="hostel" class="section">
+<h2>Available Hostels</h2>
+<ul>
+<li>Hostel A</li>
+<li>Hostel B</li>
+<li>Hostel C</li>
+</ul>
+</div>
+
+<div id="apply" class="section">
+<h2>Apply for Hostel</h2>
+<select>
+<option>Select Hostel</option>
+<option>Hostel A</option>
+<option>Hostel B</option>
+</select>
+<button>Apply</button>
+</div>
+
+<div id="status" class="section">
+<h2>Allocation Status</h2>
+<p>No hostel allocated yet</p>
+</div>
+
+<div id="settings" class="section">
+<h2>Settings</h2>
+<label>Change Language</label>
+<select onchange="changeLanguage(this.value)">
+<option value="en">English</option>
+<option value="sw">Swahili</option>
+</select>
+</div>
+
+</div>
+</div>
+
+<script>
+/* ===== SHOW PAGES ===== */
+function showRegister(){
+document.getElementById("loginBox").style.display="none";
+document.getElementById("registerBox").style.display="block";
+}
+
+function showLogin(){
+document.getElementById("registerBox").style.display="none";
+document.getElementById("loginBox").style.display="block";
+}
+
+/* ===== REGISTER ===== */
+function register(){
+let user={
+name: regName.value,
+email: regEmail.value,
+password: regPassword.value
+};
+localStorage.setItem("user", JSON.stringify(user));
+alert("Registration successful!");
+showLogin();
+}
+
+/* ===== LOGIN ===== */
+function login(){
+let user=JSON.parse(localStorage.getItem("user"));
+if(!user){
+alert("Please register first");
+return;
+}
+if(loginEmail.value===user.email && loginPassword.value===user.password){
+document.getElementById("loginBox").style.display="none";
+document.getElementById("dashboard").style.display="flex";
+showSection("home");
+}else{
+alert("Wrong email or password");
+}
+}
+
+/* ===== DASHBOARD SECTIONS ===== */
+function showSection(id){
+document.querySelectorAll(".section").forEach(s=>s.style.display="none");
+document.getElementById(id).style.display="block";
+}
+
+/* ===== CHANGE LANGUAGE ===== */
+function changeLanguage(lang){
+if(lang==="sw"){
+welcomeText.innerText="KARIBU KWENYE MFUMO WA MGAWO WA HOSTEL MTANDAONI";
+}else{
+welcomeText.innerText="WELCOME WEB BASED HOSTEL ALLOCATION MANAGEMENT SYSTEM";
+}
+}
+
+/* ===== LOGOUT ===== */
+function logout(){
+location.reload();
+}
+</script>
+
+</body>
+</html>

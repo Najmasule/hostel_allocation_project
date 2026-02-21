@@ -1,0 +1,32 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Allocation Status</title>
+  <link rel="stylesheet" href="{% static 'hostel_app/css/dashboard.css' %}">
+</head>
+<body>
+{% include "hostel_app/navbar.html" %}
+<main class="content">
+  <div class="section">
+    <h2>Your Allocation Status</h2>
+    {% if allocation %}
+      <p>You have been allocated to <strong>{{ allocation.hostel.name }}</strong></p>
+      {% if allocation.room_number %}
+        <p>Room: <strong>{{ allocation.room_number }}</strong></p>
+      {% else %}
+        <p>Room: <em>Not assigned yet</em></p>
+      {% endif %}
+      <p>Allocated on: {{ allocation.allocated_on|date:"F j, Y, g:i a" }}</p>
+    {% elif user.is_authenticated %}
+      <p>Your application is pending or you have not applied yet.</p>
+      <p><a href="{% url 'apply_hostel' %}">Apply for a hostel</a></p>
+    {% else %}
+      <p>Please <a href="{% url 'login_page' %}">log in</a> to see your allocation.</p>
+    {% endif %}
+  </div>
+</main>
+</body>
+</html>

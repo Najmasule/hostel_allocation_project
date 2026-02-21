@@ -1,0 +1,87 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WEB BASED HOSTEL ALLOCATION MANAGEMENT SYSTEM</title>
+
+  <!-- Link CSS -->
+  <link rel="stylesheet" href="{% static 'hostel_app/css/style.css' %}">
+</head>
+<body>
+
+  <!-- Register -->
+  <div id="register" class="page">
+    <h1>Register</h1>
+    <form id="registerForm">
+      <input type="text" placeholder="Full Name" required>
+      <input type="email" placeholder="Email" required>
+      <input type="password" placeholder="Password" required>
+      <button type="submit">Register</button>
+    </form>
+  </div>
+
+  <!-- Login -->
+  <div id="login" class="page hidden">
+    <h1>Login</h1>
+    <form id="loginForm">
+      <input type="email" placeholder="Email" required>
+      <input type="password" placeholder="Password" required>
+      <button type="submit">Login</button>
+    </form>
+  </div>
+
+  <!-- Dashboard -->
+  <div id="dashboard" class="hidden">
+    <div id="sidebar">
+      <h2>Menu</h2>
+      <button onclick="showPage('viewHostel')">View Hostel</button>
+      <button onclick="showPage('applyHostel')">Apply for Hostel</button>
+      <button onclick="showPage('allocationStatus')">View Allocation Status</button>
+      <button onclick="showPage('settings')">Settings</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+
+    <div id="main-content">
+      <h1>WEB BASED HOSTEL ALLOCATION MANAGEMENT SYSTEM</h1>
+
+      <div id="viewHostel" class="subpage">
+        <h2>Available Hostels</h2>
+        <p>Hostel A, Hostel B, Hostel C...</p>
+      </div>
+
+      <div id="applyHostel" class="subpage hidden">
+        <h2>Apply for Hostel</h2>
+        <form onsubmit="applyHostel(event)">
+          <select id="hostelSelect">
+            <option>Hostel A</option>
+            <option>Hostel B</option>
+            <option>Hostel C</option>
+          </select>
+          <button type="submit">Apply</button>
+        </form>
+      </div>
+
+      <div id="allocationStatus" class="subpage hidden">
+        <h2>Allocation Status</h2>
+        <p id="statusText">No allocation yet.</p>
+      </div>
+
+      <div id="settings" class="subpage hidden">
+        <h2>Settings</h2>
+        <label>Language:
+          <select id="languageSelect" onchange="changeLanguage()">
+            <option value="en">English</option>
+            <option value="sw">Swahili</option>
+          </select>
+        </label>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Link JavaScript -->
+  <script src="{% static 'hostel_app/js/script.js' %}"></script>
+
+</body>
+</html>
