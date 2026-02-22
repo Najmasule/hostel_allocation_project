@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 
-export default function Register({ onRegister }) {
+export default function Register({ onRegister, onToast }) {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
@@ -23,11 +23,12 @@ export default function Register({ onRegister }) {
     setError("");
     try {
       await api.register(form);
-      alert("Register successful");
+      onToast?.("Register successful", "success");
       onRegister();
       navigate("/dashboard");
     } catch (err) {
       setError(err.message);
+      onToast?.(err.message, "error");
     }
   }
 

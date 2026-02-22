@@ -84,8 +84,23 @@ button:hover { background: #1e3a8a; }
 
 .error { color: #b91c1c; }
 .success { color: #166534; }
+.toast {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 9999;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+}
+.toast.success { background: #166534; }
+.toast.error { background: #b91c1c; }
+.actions-row { display: flex; gap: 10px; margin: 12px 0 18px; }
+.stats-cards .card p { margin: 0; font-size: 22px; font-weight: 700; color: #0b3d91; }
 
 @media (max-width: 900px) {
   .layout { flex-direction: column; }
   .sidebar { width: 100%; }
+  .actions-row { flex-direction: column; }
 }

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { useLanguage } from "../language";
 
 export default function Status() {
+  const { t } = useLanguage();
   const [allocation, setAllocation] = useState(null);
   const [error, setError] = useState("");
 
@@ -13,14 +15,14 @@ export default function Status() {
 
   return (
     <section className="section">
-      <h2>Your Allocation Status</h2>
+      <h2>{t("allocationStatus")}</h2>
       {error && <p className="error">{error}</p>}
-      {!error && !allocation && <p>Your application is pending or you have not applied yet.</p>}
+      {!error && !allocation && <p>{t("pendingStatus")}</p>}
       {allocation && (
         <div>
-          <p>You have been allocated to <strong>{allocation.hostel_name}</strong></p>
-          <p>Room: <strong>{allocation.room_number || "Not assigned yet"}</strong></p>
-          <p>Allocated on: {new Date(allocation.allocated_on).toLocaleString()}</p>
+          <p>{t("allocatedTo")} <strong>{allocation.hostel_name}</strong></p>
+          <p>{t("room")}: <strong>{allocation.room_number || t("notAssigned")}</strong></p>
+          <p>{t("allocatedOn")}: {new Date(allocation.allocated_on).toLocaleString()}</p>
         </div>
       )}
     </section>

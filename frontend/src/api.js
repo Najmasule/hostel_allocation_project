@@ -64,6 +64,21 @@ async function request(path, options = {}) {
   return data;
 }
 
+async function requestBlob(path) {
+  let response;
+  try {
+    response = await fetch(path, { method: "GET", credentials: "include" });
+  } catch {
+    throw new Error("Backend haipatikani. Hakikisha python manage.py runserver inaendelea.");
+  }
+
+  if (!response.ok) {
+    throw new Error(`Request failed (${response.status})`);
+  }
+
+  return response.blob();
+}
+
 export const api = {
   session: () => request("/api/session/"),
   login: (payload) => request("/api/login/", { method: "POST", body: payload }),
@@ -72,5 +87,7 @@ export const api = {
   hostels: () => request("/api/hostels/"),
   status: () => request("/api/status/"),
   apply: (payload) => request("/api/allocate/", { method: "POST", body: payload }),
-  dashboard: () => request("/api/dashboard/")
+  dashboard: () => request("/api/dashboard/"),
+  adminDashboard: () => request("/api/admin/dashboard/"),
+  exportAllocationsCsv: () => requestBlob("/api/export/allocations.csv")
 };

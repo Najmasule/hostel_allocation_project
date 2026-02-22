@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 
-export default function Apply() {
+export default function Apply({ onToast }) {
   const [hostels, setHostels] = useState([]);
   const [hostelId, setHostelId] = useState("");
   const [message, setMessage] = useState("");
+  const [assignedRoom, setAssignedRoom] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -16,10 +17,13 @@ export default function Apply() {
   async function onSubmit(e) {
     e.preventDefault();
     setMessage("");
+    setAssignedRoom("");
     setError("");
     try {
       const res = await api.apply({ hostel_id: hostelId });
       setMessage(res.message || "Application submitted");
+      setAssignedRoom(res.room_number || "");
+      onToast?.("Application submitted successfully", "success");
     } catch (err) {
       setError(err.message);
     }
@@ -30,6 +34,7 @@ export default function Apply() {
       <h2>Apply for Hostel</h2>
       <p className="subtitle">Select a hostel below and submit your application.</p>
       {message && <p className="success">{message}</p>}
+      {assignedRoom && <p className="success">Room Number: <strong>{assignedRoom}</strong></p>}
       {error && <p className="error">{error}</p>}
       <form onSubmit={onSubmit} className="form-grid">
         <label htmlFor="hostel">Preferred Hostel</label>

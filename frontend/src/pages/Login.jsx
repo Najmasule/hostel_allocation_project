@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api";
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, onToast }) {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -13,11 +13,12 @@ export default function Login({ onLogin }) {
     setError("");
     try {
       await api.login({ username, password });
-      alert("Login successful");
+      onToast?.("Login successful", "success");
       onLogin();
       navigate("/dashboard");
     } catch (err) {
       setError(err.message);
+      onToast?.(err.message, "error");
     }
   }
 

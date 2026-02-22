@@ -1,13 +1,48 @@
 from django.shortcuts import render, redirect
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.contrib import messages
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, get_user_model
-from .models import Hostel, Allocation
+from .models import Hostel, Allocation, ActivityLog
 User = get_user_model()
 from django.db.models import F
 from django.views.decorators.csrf import ensure_csrf_cookie, csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
+from django.db import IntegrityError, OperationalError
 import json
+import csv
+
+
+def _is_admin_user(user):
+    return bool(user and (user.is_staff or user.is_superuser or getattr(user, "role", "student") == "admin"))
+
+
+def _effective_role(user):
+    return "admin" if _is_admin_user(user) else "student"
+
+
+def _next_room_number(hostel):
+    numbers = (
+        Allocation.objects.filter(hostel=hostel)
+        .exclude(room_number__isnull=True)
+        .exclude(room_number__exact='')
+        .values_list("room_number", flat=True)
+    )
+    max_number = 0
+    for value in numbers:
+        raw = str(value).strip().upper()
+        if raw.startswith("R"):
+            raw = raw[1:]
+        if raw.isdigit():
+            max_number = max(max_number, int(raw))
+    return f"R{max_number + 1:03d}"
+
+
+def _log_activity(user, action, details=""):
+    try:
+        ActivityLog.objects.create(user=user, action=action, details=details[:255])
+    except Exception:
+        pass
+
 
 # ==== PAGES ====
 def register_page(request):
@@ -46,7 +81,7 @@ def login_page(request):
         if user is not None:
             auth_login(request, user)
             # If the user is staff/superuser, send them to the Django admin
-            if getattr(user, 'is_staff', False) or getattr(user, 'is_superuser', False):
+            if _is_admin_user(user):
                 return redirect('admin:index')
             return redirect('dashboard_page')
         messages.error(request, 'Invalid credentials')
@@ -137,195 +172,317 @@ def _json_body(request):
 @csrf_exempt
 @require_POST
 def register_api(request):
-    data = _json_body(request)
-    if data is None:
-        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+    try:
+        data = _json_body(request)
+        if data is None:
+            return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
 
-    name = data.get('name', '').strip()
-    username = (data.get('username') or data.get('email') or '').strip()
-    password = data.get('password')
-    password2 = data.get('password2')
-    role = data.get('role', 'student')
-    adress = data.get('adress', '').strip()
-    phone_number = data.get('phone_number', '').strip()
+        name = data.get('name', '').strip()
+        username = (data.get('username') or data.get('email') or '').strip()
+        password = data.get('password')
+        password2 = data.get('password2')
+        role = data.get('role', 'student')
+        adress = data.get('adress', '').strip()
+        phone_number = data.get('phone_number', '').strip()
 
-    if not (name and username and password):
-        return JsonResponse({"status": "error", "message": "Please fill all required fields"}, status=400)
-    if password2 is not None and password != password2:
-        return JsonResponse({"status": "error", "message": "Passwords do not match"}, status=400)
-    if User.objects.filter(username=username).exists():
-        return JsonResponse({"status": "error", "message": "Username already registered"}, status=409)
+        if not (name and username and password):
+            return JsonResponse({"status": "error", "message": "Please fill all required fields"}, status=400)
+        if password2 is not None and password != password2:
+            return JsonResponse({"status": "error", "message": "Passwords do not match"}, status=400)
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({"status": "error", "message": "Username already registered"}, status=409)
 
-    user = User.objects.create_user(
-        username=username,
-        email=username,
-        password=password,
-        first_name=name,
-        role=role,
-        adress=adress,
-        phone_number=phone_number,
-    )
-    auth_login(request, user)
-    return JsonResponse({"status": "success", "message": "Registered successfully"})
+        user = User.objects.create_user(
+            username=username,
+            email=username,
+            password=password,
+            first_name=name,
+            role=role,
+            adress=adress,
+            phone_number=phone_number,
+        )
+        auth_login(request, user)
+        _log_activity(user, "register", "Registered account via frontend")
+        return JsonResponse({"status": "success", "message": "Registered successfully"})
+    except (IntegrityError, OperationalError):
+        return JsonResponse({"status": "error", "message": "Database error. Hakikisha PostgreSQL ina-run."}, status=503)
+    except Exception:
+        return JsonResponse({"status": "error", "message": "Registration failed unexpectedly."}, status=400)
 
 @csrf_exempt
 @require_POST
 def login_api(request):
-    data = _json_body(request)
-    if data is None:
-        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+    try:
+        data = _json_body(request)
+        if data is None:
+            return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
 
-    username = (data.get('username') or '').strip()
-    password = data.get('password')
-    if not (username and password):
-        return JsonResponse({"status": "error", "message": "Username and password are required"}, status=400)
+        username = (data.get('username') or '').strip()
+        password = data.get('password')
+        if not (username and password):
+            return JsonResponse({"status": "error", "message": "Username and password are required"}, status=400)
 
-    user = authenticate(request, username=username, password=password)
-    if user is None:
-        return JsonResponse({"status": "error", "message": "Invalid credentials"}, status=401)
+        user = authenticate(request, username=username, password=password)
+        if user is None:
+            return JsonResponse({"status": "error", "message": "Invalid credentials"}, status=401)
 
-    auth_login(request, user)
-    return JsonResponse(
-        {
-            "status": "success",
-            "message": "Login success",
-            "user": {"username": user.username, "name": user.first_name, "role": user.role},
-        }
-    )
+        auth_login(request, user)
+        _log_activity(user, "login", "Logged in via frontend")
+        return JsonResponse(
+            {
+                "status": "success",
+                "message": "Login success",
+                "user": {
+                    "username": user.username,
+                    "name": user.first_name,
+                    "role": _effective_role(user),
+                    "is_admin": _is_admin_user(user),
+                },
+            }
+        )
+    except OperationalError:
+        return JsonResponse({"status": "error", "message": "Database error. Hakikisha PostgreSQL ina-run."}, status=503)
+    except Exception:
+        return JsonResponse({"status": "error", "message": "Login failed unexpectedly."}, status=400)
 
 
 @csrf_exempt
 @require_POST
 def logout_api(request):
-    auth_logout(request)
-    return JsonResponse({"status": "success", "message": "Logged out"})
+    try:
+        current_user = request.user if getattr(request, "user", None) and request.user.is_authenticated else None
+        auth_logout(request)
+        _log_activity(current_user, "logout", "Logged out")
+        return JsonResponse({"status": "success", "message": "Logged out"})
+    except Exception:
+        return JsonResponse({"status": "error", "message": "Logout failed unexpectedly."}, status=400)
 
 
 @ensure_csrf_cookie
 @require_GET
 def session_api(request):
-    if not request.user.is_authenticated:
-        return JsonResponse({"authenticated": False})
+    try:
+        if not request.user.is_authenticated:
+            return JsonResponse({"authenticated": False})
 
-    return JsonResponse(
-        {
-            "authenticated": True,
-            "user": {
+        return JsonResponse(
+            {
+                "authenticated": True,
+                "user": {
                 "id": request.user.id,
                 "username": request.user.username,
                 "name": request.user.first_name,
-                "role": getattr(request.user, "role", "student"),
+                "role": _effective_role(request.user),
+                "is_admin": _is_admin_user(request.user),
             },
         }
     )
+    except Exception:
+        return JsonResponse({"authenticated": False})
 
 
 @require_GET
 def hostels_api(request):
-    hostels = list(Hostel.objects.values("id", "name", "location", "total_rooms"))
-    return JsonResponse({"status": "success", "hostels": hostels})
+    try:
+        hostels = list(Hostel.objects.values("id", "name", "location", "total_rooms"))
+        return JsonResponse({"status": "success", "hostels": hostels})
+    except OperationalError:
+        return JsonResponse({"status": "error", "message": "Database error. Hakikisha PostgreSQL ina-run."}, status=503)
+    except Exception:
+        return JsonResponse({"status": "error", "message": "Failed to load hostels."}, status=400)
 
 
 @require_GET
 def allocation_status_api(request):
-    if not request.user.is_authenticated:
-        return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+    try:
+        if not request.user.is_authenticated:
+            return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
 
-    allocation = Allocation.objects.select_related("hostel").filter(student=request.user).first()
-    if not allocation:
-        return JsonResponse({"status": "success", "allocation": None})
+        allocation = Allocation.objects.select_related("hostel").filter(student=request.user).first()
+        if not allocation:
+            return JsonResponse({"status": "success", "allocation": None})
 
-    return JsonResponse(
-        {
-            "status": "success",
-            "allocation": {
-                "hostel_name": allocation.hostel.name,
-                "room_number": allocation.room_number,
-                "allocated_on": allocation.allocated_on.isoformat(),
-            },
-        }
-    )
+        return JsonResponse(
+            {
+                "status": "success",
+                "allocation": {
+                    "hostel_name": allocation.hostel.name,
+                    "room_number": allocation.room_number,
+                    "allocated_on": allocation.allocated_on.isoformat(),
+                },
+            }
+        )
+    except OperationalError:
+        return JsonResponse({"status": "error", "message": "Database error. Hakikisha PostgreSQL ina-run."}, status=503)
+    except Exception:
+        return JsonResponse({"status": "error", "message": "Failed to load allocation status."}, status=400)
 
 
 @csrf_exempt
 @require_POST
 def allocate_hostel(request):
-    data = _json_body(request)
-    if data is None:
-        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+    try:
+        data = _json_body(request)
+        if data is None:
+            return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
 
-    student_id = data.get('student_id')
-    hostel_id = data.get('hostel_id')
-    room_number = data.get('room_number') or ''
+        student_id = data.get('student_id')
+        hostel_id = data.get('hostel_id')
+        room_number = data.get('room_number') or ''
 
-    if student_id:
-        # Admin/staff can allocate any student from dashboard-like UI.
-        if not request.user.is_authenticated or not (request.user.is_staff or request.user.is_superuser):
-            return JsonResponse({"status": "error", "message": "Admin access required"}, status=403)
-        user = User.objects.filter(id=student_id).first()
+        if student_id:
+            if not request.user.is_authenticated or not _is_admin_user(request.user):
+                return JsonResponse({"status": "error", "message": "Admin access required"}, status=403)
+            user = User.objects.filter(id=student_id).first()
+            hostel = Hostel.objects.filter(id=hostel_id).first()
+            if not user or not hostel:
+                return JsonResponse({"status": "error", "message": "Invalid student or hostel"}, status=400)
+            resolved_room = (room_number or "").strip() or _next_room_number(hostel)
+            Allocation.objects.update_or_create(
+                student=user,
+                defaults={"hostel": hostel, "room_number": resolved_room},
+            )
+            _log_activity(request.user, "allocate", f"Allocated {user.username} to {hostel.name} ({resolved_room})")
+            return JsonResponse({"status": "success", "message": "Student allocated"})
+
+        if not request.user.is_authenticated:
+            return JsonResponse({"status": "error", "message": "Please login first"}, status=401)
+
         hostel = Hostel.objects.filter(id=hostel_id).first()
-        if not user or not hostel:
-            return JsonResponse({"status": "error", "message": "Invalid student or hostel"}, status=400)
-        Allocation.objects.update_or_create(
-            student=user,
-            defaults={"hostel": hostel, "room_number": room_number},
-        )
-        return JsonResponse({"status": "success", "message": "Student allocated"})
+        if not hostel:
+            return JsonResponse({"status": "error", "message": "Selected hostel is invalid"}, status=400)
 
-    if not request.user.is_authenticated:
-        return JsonResponse({"status": "error", "message": "Please login first"}, status=401)
+        existing = Allocation.objects.filter(student=request.user).first()
+        if existing:
+            return JsonResponse(
+                {"status": "error", "message": "You already have a hostel assigned or application."},
+                status=409,
+            )
 
-    hostel = Hostel.objects.filter(id=hostel_id).first()
-    if not hostel:
-        return JsonResponse({"status": "error", "message": "Selected hostel is invalid"}, status=400)
+        updated = Hostel.objects.filter(id=hostel.id, total_rooms__gt=0).update(total_rooms=F('total_rooms') - 1)
+        if not updated:
+            return JsonResponse({"status": "error", "message": "Selected hostel has no available rooms"}, status=409)
 
-    existing = Allocation.objects.filter(student=request.user).first()
-    if existing:
+        hostel.refresh_from_db()
+        resolved_room = _next_room_number(hostel)
+        Allocation.objects.create(student=request.user, hostel=hostel, room_number=resolved_room)
+        _log_activity(request.user, "apply", f"Applied for {hostel.name} ({resolved_room})")
         return JsonResponse(
-            {"status": "error", "message": "You already have a hostel assigned or application."},
-            status=409,
+            {
+                "status": "success",
+                "message": f"Applied to {hostel.name}",
+                "room_number": resolved_room,
+            }
         )
-
-    updated = Hostel.objects.filter(id=hostel.id, total_rooms__gt=0).update(total_rooms=F('total_rooms') - 1)
-    if not updated:
-        return JsonResponse({"status": "error", "message": "Selected hostel has no available rooms"}, status=409)
-
-    hostel.refresh_from_db()
-    Allocation.objects.create(student=request.user, hostel=hostel, room_number='')
-    return JsonResponse({"status": "success", "message": f"Applied to {hostel.name}"})
+    except OperationalError:
+        return JsonResponse({"status": "error", "message": "Database error. Hakikisha PostgreSQL ina-run."}, status=503)
+    except Exception:
+        return JsonResponse({"status": "error", "message": "Failed to apply hostel request."}, status=400)
 
 @require_GET
 def dashboard_api(request):
+    try:
+        if not request.user.is_authenticated:
+            return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+
+        hostels = list(Hostel.objects.values("id", "name", "location", "total_rooms"))
+
+        if _is_admin_user(request.user):
+            allocations_qs = Allocation.objects.select_related("student", "hostel").order_by("-allocated_on")
+        else:
+            allocations_qs = Allocation.objects.select_related("student", "hostel").filter(student=request.user).order_by("-allocated_on")
+
+        allocations = [
+            {
+                "id": allocation.id,
+                "student": allocation.student.username,
+                "hostel": allocation.hostel.name,
+                "room_number": allocation.room_number,
+                "allocated_on": allocation.allocated_on.isoformat(),
+            }
+            for allocation in allocations_qs
+        ]
+
+        return JsonResponse(
+            {
+                "status": "success",
+                "user": {
+                "username": request.user.username,
+                "name": request.user.first_name,
+                "role": _effective_role(request.user),
+                "is_admin": _is_admin_user(request.user),
+            },
+            "hostels": hostels,
+            "allocations": allocations,
+            }
+        )
+    except OperationalError:
+        return JsonResponse({"status": "error", "message": "Database error. Hakikisha PostgreSQL ina-run."}, status=503)
+    except Exception:
+        return JsonResponse({"status": "error", "message": "Dashboard failed unexpectedly."}, status=400)
+
+
+@require_GET
+def export_allocations_csv(request):
     if not request.user.is_authenticated:
         return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
 
-    hostels = list(Hostel.objects.values("id", "name", "location", "total_rooms"))
-
-    if request.user.is_staff or request.user.is_superuser or getattr(request.user, "role", "student") == "admin":
+    if _is_admin_user(request.user):
         allocations_qs = Allocation.objects.select_related("student", "hostel").order_by("-allocated_on")
     else:
         allocations_qs = Allocation.objects.select_related("student", "hostel").filter(student=request.user).order_by("-allocated_on")
 
-    allocations = [
-        {
-            "id": allocation.id,
-            "student": allocation.student.username,
-            "hostel": allocation.hostel.name,
-            "room_number": allocation.room_number,
-            "allocated_on": allocation.allocated_on.isoformat(),
-        }
-        for allocation in allocations_qs
-    ]
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="allocations_report.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(["ID", "Student", "Hostel", "Room", "Allocated On"])
+    for allocation in allocations_qs:
+        writer.writerow(
+            [
+                allocation.id,
+                allocation.student.username,
+                allocation.hostel.name,
+                allocation.room_number or "",
+                allocation.allocated_on.isoformat(),
+            ]
+        )
+    return response
+
+
+@require_GET
+def admin_dashboard_api(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+    if not _is_admin_user(request.user):
+        return JsonResponse({"status": "error", "message": "Admin access required"}, status=403)
+
+    users = list(
+        User.objects.values("id", "username", "first_name", "role", "is_staff").order_by("username")
+    )
+    allocations = list(
+        Allocation.objects.select_related("student", "hostel")
+        .values("id", "student__username", "hostel__name", "room_number", "allocated_on")
+        .order_by("-allocated_on")
+    )
+    activities = list(
+        ActivityLog.objects.select_related("user")
+        .values("id", "user__username", "action", "details", "created_at")
+        .order_by("-created_at")[:200]
+    )
 
     return JsonResponse(
         {
             "status": "success",
-            "user": {
-                "username": request.user.username,
-                "name": request.user.first_name,
-                "role": getattr(request.user, "role", "student"),
+            "summary": {
+                "total_users": User.objects.count(),
+                "total_students": User.objects.filter(role="student").count(),
+                "total_hostels": Hostel.objects.count(),
+                "total_allocations": Allocation.objects.count(),
+                "total_activities": ActivityLog.objects.count(),
             },
-            "hostels": hostels,
+            "users": users,
             "allocations": allocations,
+            "activities": activities,
         }
     )
