@@ -3,8 +3,8 @@ services:
     name: hostel-backend
     env: python
     plan: free
-    buildCommand: "pip install -r requirements.txt && python manage.py migrate && python manage.py collectstatic --noinput"
-    startCommand: "gunicorn hostel_allocation_project.wsgi:application"
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+    startCommand: "python manage.py migrate && gunicorn hostel_allocation_project.wsgi:application"
     healthCheckPath: /api/session/
     envVars:
       - key: PYTHON_VERSION
