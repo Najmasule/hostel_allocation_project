@@ -89,5 +89,11 @@ export const api = {
   apply: (payload) => request("/api/allocate/", { method: "POST", body: payload }),
   dashboard: () => request("/api/dashboard/"),
   adminDashboard: () => request("/api/admin/dashboard/"),
+  adminDeleteUser: (userId) => request(`/api/admin/users/${userId}/delete/`, { method: "POST", body: {} }),
+  adminUpdateRoom: (allocationId, roomNumber) =>
+    request(`/api/admin/allocations/${allocationId}/room/`, {
+      method: "POST",
+      body: { room_number: roomNumber }
+    }),
   exportAllocationsCsv: () => requestBlob("/api/export/allocations.csv")
 };

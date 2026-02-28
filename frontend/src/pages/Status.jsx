@@ -6,16 +6,43 @@ export default function Status() {
   const { t } = useLanguage();
   const [allocation, setAllocation] = useState(null);
   const [error, setError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+
+  async function loadStatus() {
+    const res = await api.status();
+    setAllocation(res.allocation);
+    setError("");
+  }
 
   useEffect(() => {
-    api.status()
-      .then((res) => setAllocation(res.allocation))
-      .catch((err) => setError(err.message));
+    loadStatus().catch((err) => setError(err.message));
+
+    const intervalId = window.setInterval(() => {
+      loadStatus().catch(() => {});
+    }, 15000);
+
+    return () => window.clearInterval(intervalId);
   }, []);
+
+  async function handleRefreshNow() {
+    setRefreshing(true);
+    try {
+      await loadStatus();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   return (
     <section className="section">
       <h2>{t("allocationStatus")}</h2>
+      <div className="actions-row">
+        <button type="button" onClick={handleRefreshNow} disabled={refreshing}>
+          {refreshing ? "Refreshing..." : "Refresh now"}
+        </button>
+      </div>
       {error && <p className="error">{error}</p>}
       {!error && !allocation && <p>{t("pendingStatus")}</p>}
       {allocation && (

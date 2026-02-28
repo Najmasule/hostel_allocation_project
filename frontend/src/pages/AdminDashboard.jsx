@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 
 export default function AdminDashboard({ onToast }) {
@@ -6,23 +6,85 @@ export default function AdminDashboard({ onToast }) {
   const [users, setUsers] = useState([]);
   const [allocations, setAllocations] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [roomEdits, setRoomEdits] = useState({});
+  const [pendingDeleteUserId, setPendingDeleteUserId] = useState(null);
+  const [pendingRoomAllocationId, setPendingRoomAllocationId] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const studentUserIds = useMemo(() => {
+    return new Set(
+      allocations
+        .map((a) => users.find((u) => u.username === a.student__username)?.id)
+        .filter((id) => typeof id === "number")
+    );
+  }, [allocations, users]);
+
+  async function loadAdminData() {
+    const res = await api.adminDashboard();
+    setSummary(res.summary || {});
+    setUsers(res.users || []);
+    setAllocations(res.allocations || []);
+    setActivities(res.activities || []);
+
+    setRoomEdits((prev) => {
+      const next = { ...prev };
+      for (const item of res.allocations || []) {
+        if (next[item.id] === undefined) {
+          next[item.id] = item.room_number || "";
+        }
+      }
+      return next;
+    });
+  }
+
   useEffect(() => {
-    api.adminDashboard()
-      .then((res) => {
-        setSummary(res.summary || {});
-        setUsers(res.users || []);
-        setAllocations(res.allocations || []);
-        setActivities(res.activities || []);
-      })
+    loadAdminData()
       .catch((err) => {
         setError(err.message);
         onToast?.(err.message, "error");
       })
       .finally(() => setLoading(false));
   }, [onToast]);
+
+  async function handleDeleteUser(user) {
+    const confirmed = window.confirm(`Delete user ${user.username}? This will also remove their allocation.`);
+    if (!confirmed) return;
+
+    setPendingDeleteUserId(user.id);
+    setError("");
+    try {
+      const res = await api.adminDeleteUser(user.id);
+      onToast?.(res.message || "User deleted", "success");
+      await loadAdminData();
+    } catch (err) {
+      setError(err.message);
+      onToast?.(err.message, "error");
+    } finally {
+      setPendingDeleteUserId(null);
+    }
+  }
+
+  async function handleUpdateRoom(allocation) {
+    const roomNumber = (roomEdits[allocation.id] ?? "").trim();
+    if (!roomNumber) {
+      onToast?.("Weka room number kwanza", "error");
+      return;
+    }
+
+    setPendingRoomAllocationId(allocation.id);
+    setError("");
+    try {
+      const res = await api.adminUpdateRoom(allocation.id, roomNumber);
+      onToast?.(res.message || "Room updated", "success");
+      await loadAdminData();
+    } catch (err) {
+      setError(err.message);
+      onToast?.(err.message, "error");
+    } finally {
+      setPendingRoomAllocationId(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -57,21 +119,34 @@ export default function AdminDashboard({ onToast }) {
               <th>Name</th>
               <th>Role</th>
               <th>Staff</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {users.length === 0 ? (
-              <tr><td colSpan="5">No users found.</td></tr>
+              <tr><td colSpan="6">No users found.</td></tr>
             ) : (
-              users.map((u) => (
-                <tr key={u.id}>
-                  <td>{u.id}</td>
-                  <td>{u.username}</td>
-                  <td>{u.first_name || "-"}</td>
-                  <td>{u.role || "-"}</td>
-                  <td>{u.is_staff ? "Yes" : "No"}</td>
-                </tr>
-              ))
+              users.map((u) => {
+                const canDelete = u.role === "student" || studentUserIds.has(u.id);
+                return (
+                  <tr key={u.id}>
+                    <td>{u.id}</td>
+                    <td>{u.username}</td>
+                    <td>{u.first_name || "-"}</td>
+                    <td>{u.role || "-"}</td>
+                    <td>{u.is_staff ? "Yes" : "No"}</td>
+                    <td>
+                      <button
+                        type="button"
+                        disabled={!canDelete || pendingDeleteUserId === u.id}
+                        onClick={() => handleDeleteUser(u)}
+                      >
+                        {pendingDeleteUserId === u.id ? "Deleting..." : "Delete"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -87,19 +162,39 @@ export default function AdminDashboard({ onToast }) {
               <th>Hostel</th>
               <th>Room</th>
               <th>Allocated On</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {allocations.length === 0 ? (
-              <tr><td colSpan="5">No allocations found.</td></tr>
+              <tr><td colSpan="6">No allocations found.</td></tr>
             ) : (
               allocations.map((a) => (
                 <tr key={a.id}>
                   <td>{a.id}</td>
                   <td>{a.student__username}</td>
                   <td>{a.hostel__name}</td>
-                  <td>{a.room_number || "-"}</td>
+                  <td>
+                    <input
+                      type="text"
+                      value={roomEdits[a.id] ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setRoomEdits((prev) => ({ ...prev, [a.id]: value }));
+                      }}
+                      placeholder="Room no"
+                    />
+                  </td>
                   <td>{new Date(a.allocated_on).toLocaleString()}</td>
+                  <td>
+                    <button
+                      type="button"
+                      disabled={pendingRoomAllocationId === a.id}
+                      onClick={() => handleUpdateRoom(a)}
+                    >
+                      {pendingRoomAllocationId === a.id ? "Saving..." : "Save room"}
+                    </button>
+                  </td>
                 </tr>
               ))
             )}

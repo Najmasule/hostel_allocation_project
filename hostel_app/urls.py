@@ -11,6 +11,8 @@ urlpatterns = [
     path('api/allocate/', views.allocate_hostel, name='allocate_api'),
     path('api/dashboard/', views.dashboard_api, name='dashboard_api'),
     path('api/admin/dashboard/', views.admin_dashboard_api, name='admin_dashboard_api'),
+    path('api/admin/users/<int:user_id>/delete/', views.admin_delete_user_api, name='admin_delete_user_api'),
+    path('api/admin/allocations/<int:allocation_id>/room/', views.admin_update_room_api, name='admin_update_room_api'),
     path('api/export/allocations.csv', views.export_allocations_csv, name='export_allocations_csv'),
     path('', views.spa_page, name='spa_root'),
     path('register/', views.spa_page, name='register_page'),
@@ -22,4 +24,3 @@ urlpatterns = [
     path('settings/', views.spa_page, name='settings_page'),
     path('logout/', views.spa_page, name='logout'),
 ]
-

@@ -34,6 +34,12 @@ class Allocation(models.Model):
     room_number = models.CharField(max_length=10)
     allocated_on = models.DateTimeField(auto_now_add=True)
 
+    def save(self, *args, **kwargs):
+        # Keep exactly one allocation per student by removing older rows first.
+        if self.student_id:
+            Allocation.objects.filter(student_id=self.student_id).exclude(pk=self.pk).delete()
+        super().save(*args, **kwargs)
+
     def __str__(self):
         room = self.room_number or "N/A"
         return f"{self.student.username} - {self.hostel.name} - {room}"

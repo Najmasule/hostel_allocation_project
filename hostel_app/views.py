@@ -44,12 +44,21 @@ def _log_activity(user, action, details=""):
         pass
 
 
+def _latest_allocation_for_student(student):
+    return (
+        Allocation.objects.select_related("hostel")
+        .filter(student=student)
+        .order_by("-allocated_on", "-id")
+        .first()
+    )
+
+
 # ==== PAGES ====
 def register_page(request):
     # Handles both showing the registration page and form submission
     if request.method == 'POST':
         name = request.POST.get('name')
-        username = request.POST.get('username') or request.POST.get('email')    
+        username = request.POST.get('username') or request.POST.get('email')
         password = request.POST.get('password')
         password2 = request.POST.get('password2') or request.POST.get('confirm_password')
         role = request.POST.get('role', 'student')
@@ -298,7 +307,7 @@ def allocation_status_api(request):
         if not request.user.is_authenticated:
             return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
 
-        allocation = Allocation.objects.select_related("hostel").filter(student=request.user).first()
+        allocation = _latest_allocation_for_student(request.user)
         if not allocation:
             return JsonResponse({"status": "success", "allocation": None})
 
@@ -338,11 +347,25 @@ def allocate_hostel(request):
             if not user or not hostel:
                 return JsonResponse({"status": "error", "message": "Invalid student or hostel"}, status=400)
             resolved_room = (room_number or "").strip() or _next_room_number(hostel)
-            Allocation.objects.update_or_create(
-                student=user,
-                defaults={"hostel": hostel, "room_number": resolved_room},
+            existing_allocations = Allocation.objects.filter(student=user).order_by("-allocated_on", "-id")
+
+            if existing_allocations.exists():
+                primary = existing_allocations.first()
+                primary.hostel = hostel
+                primary.room_number = resolved_room
+                primary.save(update_fields=["hostel", "room_number"])
+                removed_count = existing_allocations.exclude(id=primary.id).count()
+                if removed_count:
+                    existing_allocations.exclude(id=primary.id).delete()
+            else:
+                primary = Allocation.objects.create(student=user, hostel=hostel, room_number=resolved_room)
+                removed_count = 0
+
+            _log_activity(
+                request.user,
+                "allocate",
+                f"Allocated {user.username} to {hostel.name} ({resolved_room}) - removed {removed_count} old allocation(s)",
             )
-            _log_activity(request.user, "allocate", f"Allocated {user.username} to {hostel.name} ({resolved_room})")
             return JsonResponse({"status": "success", "message": "Student allocated"})
 
         if not request.user.is_authenticated:
@@ -352,7 +375,7 @@ def allocate_hostel(request):
         if not hostel:
             return JsonResponse({"status": "error", "message": "Selected hostel is invalid"}, status=400)
 
-        existing = Allocation.objects.filter(student=request.user).first()
+        existing = _latest_allocation_for_student(request.user)
         if existing:
             return JsonResponse(
                 {"status": "error", "message": "You already have a hostel assigned or application."},
@@ -388,20 +411,32 @@ def dashboard_api(request):
         hostels = list(Hostel.objects.values("id", "name", "location", "total_rooms"))
 
         if _is_admin_user(request.user):
-            allocations_qs = Allocation.objects.select_related("student", "hostel").order_by("-allocated_on")
+            allocations_qs = Allocation.objects.select_related("student", "hostel").order_by("-allocated_on", "-id")
+            allocations = [
+                {
+                    "id": allocation.id,
+                    "student": allocation.student.username,
+                    "hostel": allocation.hostel.name,
+                    "room_number": allocation.room_number,
+                    "allocated_on": allocation.allocated_on.isoformat(),
+                }
+                for allocation in allocations_qs
+            ]
         else:
-            allocations_qs = Allocation.objects.select_related("student", "hostel").filter(student=request.user).order_by("-allocated_on")
-
-        allocations = [
-            {
-                "id": allocation.id,
-                "student": allocation.student.username,
-                "hostel": allocation.hostel.name,
-                "room_number": allocation.room_number,
-                "allocated_on": allocation.allocated_on.isoformat(),
-            }
-            for allocation in allocations_qs
-        ]
+            latest_allocation = _latest_allocation_for_student(request.user)
+            allocations = (
+                [
+                    {
+                        "id": latest_allocation.id,
+                        "student": latest_allocation.student.username,
+                        "hostel": latest_allocation.hostel.name,
+                        "room_number": latest_allocation.room_number,
+                        "allocated_on": latest_allocation.allocated_on.isoformat(),
+                    }
+                ]
+                if latest_allocation
+                else []
+            )
 
         return JsonResponse(
             {
@@ -484,5 +519,82 @@ def admin_dashboard_api(request):
             "users": users,
             "allocations": allocations,
             "activities": activities,
+        }
+    )
+
+
+@csrf_exempt
+@require_POST
+def admin_delete_user_api(request, user_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+    if not _is_admin_user(request.user):
+        return JsonResponse({"status": "error", "message": "Admin access required"}, status=403)
+
+    target = User.objects.filter(id=user_id).first()
+    if not target:
+        return JsonResponse({"status": "error", "message": "User not found"}, status=404)
+
+    if target.id == request.user.id:
+        return JsonResponse({"status": "error", "message": "Huwezi kujifuta mwenyewe"}, status=400)
+
+    allocations = list(Allocation.objects.select_related("hostel").filter(student=target))
+    for allocation in allocations:
+        if allocation.hostel_id:
+            Hostel.objects.filter(id=allocation.hostel_id).update(total_rooms=F("total_rooms") + 1)
+
+    username = target.username
+    target.delete()
+    _log_activity(request.user, "allocate", f"Deleted user {username} and released {len(allocations)} room(s)")
+
+    return JsonResponse({"status": "success", "message": f"User {username} deleted"})
+
+
+@csrf_exempt
+@require_POST
+def admin_update_room_api(request, allocation_id):
+    if not request.user.is_authenticated:
+        return JsonResponse({"status": "error", "message": "Authentication required"}, status=401)
+    if not _is_admin_user(request.user):
+        return JsonResponse({"status": "error", "message": "Admin access required"}, status=403)
+
+    data = _json_body(request)
+    if data is None:
+        return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+
+    room_number = (data.get("room_number") or "").strip()
+    if not room_number:
+        return JsonResponse({"status": "error", "message": "Room number is required"}, status=400)
+
+    allocation = Allocation.objects.select_related("student", "hostel").filter(id=allocation_id).first()
+    if not allocation:
+        return JsonResponse({"status": "error", "message": "Allocation not found"}, status=404)
+
+    old_room = allocation.room_number or "-"
+    allocation.room_number = room_number
+    allocation.save(update_fields=["room_number"])
+
+    duplicate_allocations = Allocation.objects.filter(student=allocation.student).exclude(id=allocation.id)
+    removed_count = duplicate_allocations.count()
+    if removed_count:
+        duplicate_allocations.delete()
+
+    _log_activity(
+        request.user,
+        "allocate",
+        f"Updated room for {allocation.student.username} in {allocation.hostel.name}: {old_room} -> {room_number} (removed {removed_count} duplicate allocation(s))",
+    )
+
+    return JsonResponse(
+        {
+            "status": "success",
+            "message": f"Room number updated. Removed {removed_count} old allocation(s).",
+            "allocation": {
+                "id": allocation.id,
+                "student__username": allocation.student.username,
+                "hostel__name": allocation.hostel.name,
+                "room_number": allocation.room_number,
+                "allocated_on": allocation.allocated_on.isoformat(),
+            },
         }
     )
