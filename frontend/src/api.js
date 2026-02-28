@@ -1,3 +1,10 @@
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+
+function withBase(path) {
+  if (!API_BASE_URL) return path;
+  return `${API_BASE_URL}${path}`;
+}
+
 function getCookie(name) {
   const value = `; ${document.cookie}`;
   const parts = value.split(`; ${name}=`);
@@ -11,7 +18,7 @@ async function ensureCsrfToken() {
     return token;
   }
 
-  await fetch("/api/session/", { credentials: "include" });
+  await fetch(withBase("/api/session/"), { credentials: "include" });
   token = getCookie("csrftoken");
   return token;
 }
@@ -40,7 +47,7 @@ async function request(path, options = {}) {
 
   let response;
   try {
-    response = await fetch(path, config);
+    response = await fetch(withBase(path), config);
   } catch {
     throw new Error("Backend haipatikani. Hakikisha python manage.py runserver inaendelea.");
   }
@@ -67,7 +74,7 @@ async function request(path, options = {}) {
 async function requestBlob(path) {
   let response;
   try {
-    response = await fetch(path, { method: "GET", credentials: "include" });
+    response = await fetch(withBase(path), { method: "GET", credentials: "include" });
   } catch {
     throw new Error("Backend haipatikani. Hakikisha python manage.py runserver inaendelea.");
   }
