@@ -1,8 +1,8 @@
 import { defineConfig } from "vite";
 
 export default defineConfig(({ command }) => ({
-  // Use root path in dev so React routes work, but keep /static/ assets for Django build.
-  base: command === "serve" ? "/" : "/static/",
+  // Render static-site deployment expects built assets at /assets/*.
+  base: "/",
   esbuild: {
     jsxInject: 'import React from "react"'
   },
