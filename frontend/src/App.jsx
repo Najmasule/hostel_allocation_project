@@ -81,9 +81,11 @@ export default function App() {
       const res = await api.session();
       setAuthenticated(Boolean(res.authenticated));
       setCurrentUser(res.user || null);
+      return Boolean(res.authenticated);
     } catch {
       setAuthenticated(false);
       setCurrentUser(null);
+      return false;
     }
   }
 

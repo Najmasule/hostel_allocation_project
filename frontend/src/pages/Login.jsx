@@ -13,9 +13,12 @@ export default function Login({ onLogin, onToast }) {
     setError("");
     try {
       await api.login({ username, password });
+      const authenticated = await onLogin?.();
+      if (!authenticated) {
+        throw new Error("Login successful but session not established. Tafadhali jaribu tena.");
+      }
       onToast?.("Login successful", "success");
-      onLogin();
-      navigate("/dashboard");
+      navigate("/dashboard", { replace: true });
     } catch (err) {
       setError(err.message);
       onToast?.(err.message, "error");
