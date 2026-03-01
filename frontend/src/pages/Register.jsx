@@ -23,7 +23,7 @@ export default function Register({ onRegister, onToast }) {
     setError("");
     try {
       await api.register(form);
-      const authenticated = await onRegister?.();
+      const authenticated = await onRegister?.({ retries: 4, delayMs: 350 });
       if (!authenticated) {
         throw new Error("Register successful but session not established. Tafadhali login.");
       }

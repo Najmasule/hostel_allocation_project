@@ -76,17 +76,30 @@ export default function App() {
     window.__toastTimer = window.setTimeout(() => setToast(null), 2500);
   }
 
-  async function refreshSession() {
-    try {
-      const res = await api.session();
-      setAuthenticated(Boolean(res.authenticated));
-      setCurrentUser(res.user || null);
-      return Boolean(res.authenticated);
-    } catch {
-      setAuthenticated(false);
-      setCurrentUser(null);
-      return false;
+  async function refreshSession(options = {}) {
+    const retries = Number(options.retries || 0);
+    const delayMs = Number(options.delayMs || 300);
+
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      try {
+        const res = await api.session();
+        const ok = Boolean(res.authenticated);
+        setAuthenticated(ok);
+        setCurrentUser(res.user || null);
+        if (ok) {
+          return true;
+        }
+      } catch {
+        setAuthenticated(false);
+        setCurrentUser(null);
+      }
+
+      if (attempt < retries) {
+        await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+      }
     }
+
+    return false;
   }
 
   useEffect(() => {

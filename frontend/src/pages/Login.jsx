@@ -13,7 +13,7 @@ export default function Login({ onLogin, onToast }) {
     setError("");
     try {
       await api.login({ username, password });
-      const authenticated = await onLogin?.();
+      const authenticated = await onLogin?.({ retries: 4, delayMs: 350 });
       if (!authenticated) {
         throw new Error("Login successful but session not established. Tafadhali jaribu tena.");
       }
